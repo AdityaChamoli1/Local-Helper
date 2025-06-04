@@ -1,0 +1,733 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Image, 
+  TextInput, 
+  FlatList,
+  Platform,
+  Modal,
+  ActivityIndicator
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { FontAwesome5, Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { RootStackParamList } from '../App';
+import { toast } from 'sonner-native';
+
+// Define service provider type
+type ServiceProvider = {
+  id: string;
+  name: string;
+  service: string;
+  rating: number;
+  reviews: number;
+  verified: boolean;
+  distance: string;
+  imageUrl: string;
+  emergencyAvailable: boolean;
+};
+
+// Define service category type
+type ServiceCategory = {
+  id: string;
+  name: string;
+  icon: string;
+};
+
+// Define the navigation prop type
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+export default function HomeScreen() {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
+  const [location, setLocation] = useState('Delhi NCR');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+  const [newLocation, setNewLocation] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [recentLocations] = useState(['Mumbai', 'Bangalore', 'Chennai', 'Kolkata']);
+
+  // Sample service categories
+  const serviceCategories: ServiceCategory[] = [
+    { id: '1', name: 'Plumber', icon: 'wrench' },
+    { id: '2', name: 'Electrician', icon: 'bolt' },
+    { id: '3', name: 'Painter', icon: 'brush' },
+    { id: '4', name: 'Maid', icon: 'broom' },
+    { id: '5', name: 'Tutor', icon: 'book' },
+    { id: '6', name: 'Cook', icon: 'utensils' },
+    { id: '7', name: 'Carpenter', icon: 'hammer' },
+    { id: '8', name: 'Gardener', icon: 'leaf' },
+  ];
+
+  // Sample service providers data - will be updated based on location
+  const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([
+    {
+      id: '1',
+      name: 'Ramesh Kumar',
+      service: 'Plumber',
+      rating: 4.8,
+      reviews: 128,
+      verified: true,
+      distance: '1.2 km',
+      imageUrl: 'https://api.a0.dev/assets/image?text=RK&aspect=1:1',
+      emergencyAvailable: true,
+    },
+    {
+      id: '2',
+      name: 'Suresh Sharma',
+      service: 'Electrician',
+      rating: 4.6,
+      reviews: 85,
+      verified: true,
+      distance: '2.5 km',
+      imageUrl: 'https://api.a0.dev/assets/image?text=SS&aspect=1:1',
+      emergencyAvailable: false,
+    },
+    {
+      id: '3',
+      name: 'Priya Patel',
+      service: 'Maid',
+      rating: 4.9,
+      reviews: 156,
+      verified: true,
+      distance: '0.8 km',
+      imageUrl: 'https://api.a0.dev/assets/image?text=PP&aspect=1:1',
+      emergencyAvailable: false,
+    },
+    {
+      id: '4',
+      name: 'Vikram Singh',
+      service: 'Painter',
+      rating: 4.5,
+      reviews: 67,
+      verified: false,
+      distance: '3.1 km',
+      imageUrl: 'https://api.a0.dev/assets/image?text=VS&aspect=1:1',
+      emergencyAvailable: true,
+    },
+  ]);
+  
+  // Function to mock search engine API request and update providers based on location
+  const updateLocationAndSearchProviders = async (newLocationValue: string) => {
+    setIsLoading(true);
+    
+    try {
+      // In a real app, this would be a call to an external API
+      // You would use fetch() to call your backend or a service like Google Maps API
+      // Here we're simulating the response
+      
+      // Simulate API latency
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Create a search engine prompt for the selected location
+      const searchPrompt = `Verified home service providers near ${newLocationValue}`;
+      console.log(`Search engine query: ${searchPrompt}`);
+      
+      // Generate location-specific providers
+      // In a real app, this would be the result from your API
+      const newProviders: ServiceProvider[] = [
+        {
+          id: '101',
+          name: `${newLocationValue.slice(0, 1)}${newLocationValue.slice(1, 3).toLowerCase()}` + ` Local Services`,
+          service: 'Plumber',
+          rating: 4.7 + Math.random() * 0.2,
+          reviews: 50 + Math.floor(Math.random() * 100),
+          verified: true,
+          distance: (0.5 + Math.random() * 2).toFixed(1) + ' km',
+          imageUrl: `https://api.a0.dev/assets/image?text=${newLocationValue.slice(0, 1)}S&aspect=1:1`,
+          emergencyAvailable: Math.random() > 0.5,
+        },
+        {
+          id: '102',
+          name: `${newLocationValue.slice(0, 1)}${newLocationValue.slice(1, 3).toLowerCase()}` + ` Electrical Works`,
+          service: 'Electrician',
+          rating: 4.5 + Math.random() * 0.3,
+          reviews: 30 + Math.floor(Math.random() * 80),
+          verified: Math.random() > 0.3,
+          distance: (0.8 + Math.random() * 3).toFixed(1) + ' km',
+          imageUrl: `https://api.a0.dev/assets/image?text=${newLocationValue.slice(0, 1)}E&aspect=1:1`,
+          emergencyAvailable: Math.random() > 0.5,
+        },
+        {
+          id: '103',
+          name: `${newLocationValue.slice(0, 1)}${newLocationValue.slice(1, 3).toLowerCase()}` + ` Home Care`,
+          service: 'Maid',
+          rating: 4.3 + Math.random() * 0.6,
+          reviews: 40 + Math.floor(Math.random() * 70),
+          verified: true,
+          distance: (1.2 + Math.random() * 2.5).toFixed(1) + ' km',
+          imageUrl: `https://api.a0.dev/assets/image?text=${newLocationValue.slice(0, 1)}H&aspect=1:1`,
+          emergencyAvailable: false,
+        },
+        {
+          id: '104',
+          name: `${newLocationValue.slice(0, 1)}${newLocationValue.slice(1, 3).toLowerCase()}` + ` Painting Solutions`,
+          service: 'Painter',
+          rating: 4.1 + Math.random() * 0.8,
+          reviews: 25 + Math.floor(Math.random() * 60),
+          verified: Math.random() > 0.4,
+          distance: (1.5 + Math.random() * 3).toFixed(1) + ' km',
+          imageUrl: `https://api.a0.dev/assets/image?text=${newLocationValue.slice(0, 1)}P&aspect=1:1`,
+          emergencyAvailable: Math.random() > 0.7,
+        },
+        {
+          id: '105',
+          name: `${newLocationValue.slice(0, 1)}${newLocationValue.slice(1, 3).toLowerCase()}` + ` Expert Tutoring`,
+          service: 'Tutor',
+          rating: 4.6 + Math.random() * 0.3,
+          reviews: 45 + Math.floor(Math.random() * 90),
+          verified: true,
+          distance: (0.7 + Math.random() * 3.2).toFixed(1) + ' km',
+          imageUrl: `https://api.a0.dev/assets/image?text=${newLocationValue.slice(0, 1)}T&aspect=1:1`,
+          emergencyAvailable: false,
+        },
+      ];
+      
+      // Update the location and service providers
+      setLocation(newLocationValue);
+      setServiceProviders(newProviders);
+      setIsLocationModalVisible(false);
+      toast.success(`Location updated to ${newLocationValue}`);
+      
+    } catch (error) {
+      console.error('Error updating location:', error);
+      toast.error('Failed to update location. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filter service providers based on selected category and search query
+  const filteredProviders = serviceProviders.filter(provider => {
+    const matchesCategory = !selectedCategory || provider.service === selectedCategory;
+    const matchesSearch = !searchQuery || 
+      provider.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      provider.service.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesCategory && matchesSearch;
+  });
+
+  // Navigate to service provider detail screen
+  const navigateToProviderDetail = (provider: ServiceProvider) => {
+    navigation.navigate('ServiceProvider', provider);
+  };
+
+  // Render service category item
+  const renderCategoryItem = ({ item }: { item: ServiceCategory }) => (
+    <TouchableOpacity 
+      style={[
+        styles.categoryItem, 
+        selectedCategory === item.name ? styles.selectedCategory : {}
+      ]}
+      onPress={() => setSelectedCategory(selectedCategory === item.name ? null : item.name)}
+    >
+      <View style={styles.categoryIcon}>
+        <FontAwesome5 name={item.icon} size={24} color={selectedCategory === item.name ? "#ffffff" : "#1a73e8"} />
+      </View>
+      <Text style={styles.categoryText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  // Render service provider card
+  const renderProviderCard = ({ item }: { item: ServiceProvider }) => (
+    <TouchableOpacity 
+      style={styles.providerCard}
+      onPress={() => navigateToProviderDetail(item)}
+    >
+      <View style={styles.providerHeader}>
+        <Image source={{ uri: item.imageUrl }} style={styles.providerImage} />
+        <View style={styles.providerInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.providerName}>{item.name}</Text>
+            {item.verified && (
+              <View style={styles.verifiedBadge}>
+                <MaterialIcons name="verified" size={16} color="#1a73e8" />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.providerService}>{item.service}</Text>
+          <View style={styles.ratingContainer}>
+            <FontAwesome5 name="star" size={14} color="#FFD700" solid />
+            <Text style={styles.ratingText}>{item.rating.toFixed(1)} ({item.reviews} reviews)</Text>
+            <View style={styles.distanceContainer}>
+              <Feather name="map-pin" size={12} color="#666" />
+              <Text style={styles.distanceText}>{item.distance}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+      
+      <View style={styles.actionButtons}>
+        <TouchableOpacity 
+          style={styles.bookButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            navigateToProviderDetail(item);
+          }}
+        >
+          <Text style={styles.bookButtonText}>Book Now</Text>
+        </TouchableOpacity>
+        {item.emergencyAvailable && (
+          <TouchableOpacity 
+            style={styles.emergencyButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              // Pass the provider to navigate with an additional emergency flag
+              navigation.navigate('ServiceProvider', {
+                ...item,
+                isEmergency: true
+              });
+            }}
+          >
+            <MaterialIcons name="call" size={18} color="#ffffff" />
+            <Text style={styles.emergencyText}>Emergency</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Render recent location item
+  const renderRecentLocationItem = ({ item }: { item: string }) => (
+    <TouchableOpacity 
+      style={styles.recentLocationItem}
+      onPress={() => {
+        setNewLocation(item);
+        updateLocationAndSearchProviders(item);
+      }}
+    >
+      <Ionicons name="time-outline" size={18} color="#666" />
+      <Text style={styles.recentLocationText}>{item}</Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Namaste 👋</Text>
+          <TouchableOpacity 
+            style={styles.locationContainer}
+            onPress={() => setIsLocationModalVisible(true)}
+          >
+            <Ionicons name="location-outline" size={18} color="#1a73e8" />
+            <Text style={styles.locationText}>{location}</Text>
+            <MaterialIcons name="keyboard-arrow-down" size={20} color="#1a73e8" />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={styles.profileButton}>
+          <Ionicons name="person-circle-outline" size={36} color="#1a73e8" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search for services or helpers..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery !== '' && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={20} color="#666" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <Text style={styles.sectionTitle}>Services</Text>
+      <View style={styles.categoriesContainer}>
+        <FlatList
+          data={serviceCategories}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryList}
+        />
+      </View>
+
+      <Text style={styles.sectionTitle}>
+        {selectedCategory ? `Available ${selectedCategory}s in ${location}` : `Nearby Helpers in ${location}`}
+      </Text>
+      
+      <FlatList
+        data={filteredProviders}
+        renderItem={renderProviderCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.providersListContent}
+        style={styles.providersList}
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyState}>
+            <FontAwesome5 name="search" size={50} color="#ccc" />
+            <Text style={styles.emptyStateText}>No helpers found.</Text>
+            <Text style={styles.emptyStateSubText}>Try adjusting your search criteria.</Text>
+          </View>
+        )}
+      />
+
+      {/* Location Selection Modal */}
+      <Modal
+        visible={isLocationModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsLocationModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Change Location</Text>
+              <TouchableOpacity onPress={() => setIsLocationModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.searchLocationContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Enter your location..."
+                value={newLocation}
+                onChangeText={setNewLocation}
+                autoFocus
+              />
+              {newLocation !== '' && (
+                <TouchableOpacity onPress={() => setNewLocation('')} style={styles.clearButton}>
+                  <Ionicons name="close-circle" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {newLocation !== '' && (
+              <TouchableOpacity 
+                style={styles.useThisLocationButton}
+                onPress={() => updateLocationAndSearchProviders(newLocation)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.useThisLocationText}>Use This Location</Text>
+                )}
+              </TouchableOpacity>
+            )}
+            
+            {recentLocations.length > 0 && (
+              <View style={styles.recentLocationsContainer}>
+                <Text style={styles.recentLocationsTitle}>Recent Locations</Text>
+                <FlatList
+                  data={recentLocations}
+                  renderItem={renderRecentLocationItem}
+                  keyExtractor={(item) => item}
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  greeting: {
+    fontSize: 16,
+    color: '#666',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  locationText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginHorizontal: 4,
+    color: '#1a73e8',
+  },
+  profileButton: {
+    padding: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 8,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 12,
+    color: '#333',
+  },
+  categoriesContainer: {
+    marginBottom: 8,
+  },
+  categoryList: {
+    paddingHorizontal: 12,
+  },
+  categoryItem: {
+    alignItems: 'center',
+    marginHorizontal: 8,
+    width: 80,
+  },
+  categoryIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f0f4fc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  selectedCategory: {
+    transform: [{scale: 1.05}],
+  },
+  categoryText: {
+    fontSize: 12,
+    color: '#333',
+    textAlign: 'center',
+  },
+  providersList: {
+    flex: 1,
+  },
+  providersListContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  providerCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  providerHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  providerImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f0f4fc',
+  },
+  providerInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  providerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginRight: 6,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f1ff',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  verifiedText: {
+    fontSize: 10,
+    color: '#1a73e8',
+    marginLeft: 2,
+  },
+  providerService: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  distanceText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bookButton: {
+    flex: 1,
+    backgroundColor: '#1a73e8',
+    paddingVertical: 10,
+    borderRadius: 6,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  emergencyButton: {
+    flexDirection: 'row',
+    backgroundColor: '#ff4757',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 0.5,
+  },
+  emergencyText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    marginTop: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#666',
+    marginTop: 16,
+  },
+  emptyStateSubText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: Platform.OS === 'web' ? '80%' : '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  searchLocationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f4fc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  useThisLocationButton: {
+    backgroundColor: '#1a73e8',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  useThisLocationText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  recentLocationsContainer: {
+    marginTop: 8,
+  },
+  recentLocationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  recentLocationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  recentLocationText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+});
+
